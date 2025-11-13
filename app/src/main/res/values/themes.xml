@@ -1,0 +1,9 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.Game240" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="fontFamily">@font/my_custom_font</item>
+        <item name="materialButtonStyle">@style/Widget.AppCompat.Button</item>
+    </style>
+
+    <style name="Theme.Game240" parent="Base.Theme.Game240" />
+</resources>

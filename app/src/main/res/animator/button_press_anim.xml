@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 按下状态：整体右下移动2dp -->
+    <item android:state_pressed="true">
+        <set>
+            <objectAnimator
+                android:propertyName="translationX"
+                android:valueTo="2dp"
+                android:duration="50" />
+            <objectAnimator
+                android:propertyName="translationY"
+                android:valueTo="2dp"
+                android:duration="50" />
+        </set>
+    </item>
+
+    <!-- 松开状态：回到原位 -->
+    <item>
+        <set>
+            <objectAnimator
+                android:propertyName="translationX"
+                android:valueTo="0dp"
+                android:duration="150" />
+            <objectAnimator
+                android:propertyName="translationY"
+                android:valueTo="0dp"
+                android:duration="150" />
+        </set>
+    </item>
+</selector>
