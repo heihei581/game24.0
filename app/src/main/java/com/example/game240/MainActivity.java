@@ -15,6 +15,12 @@ import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
+    //存储扑克牌数值和状态
+    private int[] cardValues = {6, 6, 6, 6};
+    private boolean[] cardUsed = new boolean[4]; // 记录每张牌是否被使用
+    private ImageView[] cardViews; // 存储四个ImageView的引用
+    private EditText etExpression; //输入框引用
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -26,23 +32,36 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        // 【新增】随机换牌功能
+        // 随机换牌功能
         // 获取四个扑克牌ImageView
         final ImageView card1 = findViewById(R.id.card1);
         final ImageView card2 = findViewById(R.id.card2);
         final ImageView card3 = findViewById(R.id.card3);
         final ImageView card4 = findViewById(R.id.card4);
 
+        // 初始化数组
+        cardViews = new ImageView[]{card1, card2, card3, card4};
+        etExpression = findViewById(R.id.et_expression);
+
+        // 【新增】初始化扑克牌点击事件
+        setupCardClickListeners();
+
+        // 【新增】获取清空按钮
+        Button btnClear = findViewById(R.id.btn_clear);
+        // 【新增】清空按钮点击事件
+        btnClear.setOnClickListener(v -> {
+            etExpression.setText(""); // 清空输入框
+            enableAllCards(); // 启用所有扑克牌
+        });
+
         // 获取刷新按钮
         Button btnRefresh = findViewById(R.id.btn_Refresh);
-
-        // 设置点击事件：随机抽取4张牌（允许重复）
+        // 刷新按钮点击事件：随机抽取4张牌（允许重复）
         btnRefresh.setOnClickListener(v -> {
             Random random = new Random();
-            ImageView[] cards = {card1, card2, card3, card4};
 
-            for (int i = 0; i < cards.length; i++) {
-                ImageView card = cards[i];
+            for (int i = 0; i < cardViews.length; i++) {
+                ImageView card = cardViews[i];
                 final int index = i; // 需要final用于lambda
 
                 // 阶段1：缩小+旋转+淡出（洗牌动作）
@@ -54,8 +73,9 @@ public class MainActivity extends AppCompatActivity {
                         .setDuration(350)
                         .setStartDelay(i * 70)  // 依次延迟，有飞出的层次感
                         .withEndAction(() -> {
-                            // 阶段2：换牌
+                            // 阶段2：换牌并生成新数值
                             int randomNum = random.nextInt(10) + 1;
+                            cardValues[index] = randomNum; // 保存新数值
                             int drawableId = getResources().getIdentifier(
                                     "c" + randomNum, "drawable", getPackageName()
                             );
@@ -71,9 +91,20 @@ public class MainActivity extends AppCompatActivity {
                                     .setInterpolator(new android.view.animation.OvershootInterpolator()); // 弹性效果
                         });
             }
+
+            // 【新增】刷新后启用所有牌
+            enableAllCards();
+            etExpression.setText(""); // 清空输入框
         });
 
-        EditText etExpression = findViewById(R.id.et_expression);
+
+        // 【新增】获取符号按钮并设置点击事件（最小化修改方案）
+        findViewById(R.id.btn_add).setOnClickListener(v -> appendToExpression("+"));
+        findViewById(R.id.btn_sub).setOnClickListener(v -> appendToExpression("-"));
+        findViewById(R.id.btn_mul).setOnClickListener(v -> appendToExpression("*"));
+        findViewById(R.id.btn_div).setOnClickListener(v -> appendToExpression("/"));
+        findViewById(R.id.btn_right).setOnClickListener(v -> appendToExpression("("));
+        findViewById(R.id.btn_left).setOnClickListener(v -> appendToExpression(")"));
 
         // 禁用软键盘
         if (android.os.Build.VERSION.SDK_INT >= 21) {
@@ -85,6 +116,44 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+    }
 
+    // 【新增】设置扑克牌点击事件 循环给扑克牌加
+    private void setupCardClickListeners() {
+        for (int i = 0; i < cardViews.length; i++) {
+            final int index = i;
+            cardViews[i].setOnClickListener(v -> {
+                if (!cardUsed[index]) {
+                    // 将数字添加到输入框
+                    String currentText = etExpression.getText().toString();
+                    etExpression.setText(currentText + cardValues[index]);
+
+                    // 禁用该扑克牌
+                    disableCard(index);
+                }
+            });
+        }
+    }
+
+    // 禁用扑克牌
+    private void disableCard(int index) {
+        cardUsed[index] = true;
+        cardViews[index].setAlpha(0.5f); // 半透明
+        cardViews[index].setClickable(false); // 不可点击
+    }
+
+    // 【新增】启用所有扑克牌
+    private void enableAllCards() {
+        for (int i = 0; i < 4; i++) {
+            cardUsed[i] = false;
+            cardViews[i].setAlpha(1.0f); // 不透明
+            cardViews[i].setClickable(true); // 可点击
+        }
+    }
+
+    // 【新增】向输入框追加符号（最小化代码修改）
+    private void appendToExpression(String symbol) {
+        String currentText = etExpression.getText().toString();
+        etExpression.setText(currentText + symbol);
     }
 }
