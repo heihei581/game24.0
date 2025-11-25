@@ -40,4 +40,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+
+    //    添加第三方库来进行24点计算
+    implementation("org.apache.commons:commons-jexl3:3.2.1")
 }
