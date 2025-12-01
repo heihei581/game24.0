@@ -2,6 +2,7 @@ package com.example.game240;
 
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -27,6 +28,13 @@ public class MainActivity extends AppCompatActivity {
     private boolean[] cardUsed = new boolean[4]; // 记录每张牌是否被使用
     private EditText etExpression; //输入框引用
     private JexlEngine jexlEngine;//第三方库计算引擎
+    private boolean lastClickedIsCard = false; //记录最后一次是否点击的是扑克牌
+
+    // Toast防抖
+    private boolean isToastShowing = false; // 标记Toast是否在冷却期
+    private Toast currentToast; // 当前显示的Toast对象
+    private Handler toastHandler = new Handler(Looper.getMainLooper());
+    private static final long TOAST_DEBOUNCE_TIME = 2000; // Toast防抖冷却时间（毫秒）
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +53,27 @@ public class MainActivity extends AppCompatActivity {
         setupCardClickListeners();//扑克牌监听
         setupButtonListeners();//按钮监听
         disableSoftKeyboard();//静止使用软键盘
+    }
+
+    // 统一的防抖Toast显示方法
+    private void showDebouncedToast(String message, int duration) {
+        // 取消之前未显示完的Toast
+        if (currentToast != null) {
+            currentToast.cancel();
+        }
+
+        // 如果不在冷却期，显示Toast
+        if (!isToastShowing) {
+            isToastShowing = true;
+            currentToast = Toast.makeText(this, message, duration);
+            currentToast.show();
+
+            // 冷却期结束后重置状态
+            toastHandler.postDelayed(() -> {
+                isToastShowing = false;
+                currentToast = null;
+            }, TOAST_DEBOUNCE_TIME);
+        }
     }
 
     private void findViews() {
@@ -77,13 +106,31 @@ public class MainActivity extends AppCompatActivity {
             clear();
         });
 
-        //获取符号按钮并设置点击事件
-        findViewById(R.id.btn_add).setOnClickListener(v -> appendToExpression("+"));
-        findViewById(R.id.btn_sub).setOnClickListener(v -> appendToExpression("-"));
-        findViewById(R.id.btn_mul).setOnClickListener(v -> appendToExpression("*"));
-        findViewById(R.id.btn_div).setOnClickListener(v -> appendToExpression("/"));
-        findViewById(R.id.btn_right).setOnClickListener(v -> appendToExpression("("));
-        findViewById(R.id.btn_left).setOnClickListener(v -> appendToExpression(")"));
+        //获取符号按钮并设置点击事件（点击符号按钮后重置扑克牌状态）
+        findViewById(R.id.btn_add).setOnClickListener(v -> {
+            appendToExpression("+");
+            lastClickedIsCard = false;
+        });
+        findViewById(R.id.btn_sub).setOnClickListener(v -> {
+            appendToExpression("-");
+            lastClickedIsCard = false;
+        });
+        findViewById(R.id.btn_mul).setOnClickListener(v -> {
+            appendToExpression("*");
+            lastClickedIsCard = false;
+        });
+        findViewById(R.id.btn_div).setOnClickListener(v -> {
+            appendToExpression("/");
+            lastClickedIsCard = false;
+        });
+        findViewById(R.id.btn_right).setOnClickListener(v -> {
+            appendToExpression("(");
+            lastClickedIsCard = false;
+        });
+        findViewById(R.id.btn_left).setOnClickListener(v -> {
+            appendToExpression(")");
+            lastClickedIsCard = false;
+        });
 
         //获取提交按钮并设置点击事件
         Button btnSubmit = findViewById(R.id.btn_submit);
@@ -106,13 +153,13 @@ public class MainActivity extends AppCompatActivity {
     private void submitExpression() {
         String expression = etExpression.getText().toString().trim();
         if (expression.isEmpty()) {
-            Toast.makeText(this, "请输入计算式", Toast.LENGTH_SHORT).show();
+            showDebouncedToast("请输入计算式", Toast.LENGTH_SHORT);
             return;
         }
 
         // 检查是否所有牌都已使用
         if (!isAllCardsUsed()) {
-            Toast.makeText(this, "必须使用所有4张牌进行计算", Toast.LENGTH_SHORT).show();
+            showDebouncedToast("必须使用所有4张牌进行计算", Toast.LENGTH_SHORT);
             return;
         }
 
@@ -127,24 +174,28 @@ public class MainActivity extends AppCompatActivity {
 
                 // 判断结果是否为24
                 if (Math.abs(result - 24) < 1e-6) {
-                    Toast.makeText(this, "计算正确！", Toast.LENGTH_SHORT).show();
+                    showDebouncedToast("计算正确！", Toast.LENGTH_SHORT);
                     // 延迟1秒后刷新牌面
                     new Handler().postDelayed(() -> {
                         enableAllCards();
                         refreshCards();
                         etExpression.setText("");
+                        lastClickedIsCard = false; // 重置牌点击状态
                     }, 1000);
-                } else {
-                    Toast.makeText(this, "计算错误，请重试", Toast.LENGTH_SHORT).show();
-                    enableAllCards();
-                    clear();
                 }
-            } else {
-                Toast.makeText(this, "表达式结果不是一个有效的数字", Toast.LENGTH_SHORT).show();
+                else {
+                    showDebouncedToast("计算错误 结果为："+result, Toast.LENGTH_SHORT);
+                    enableAllCards();
+                    etExpression.setText("");
+                    lastClickedIsCard = false;
+                }
+            }
+            else {
+                showDebouncedToast("表达式结果不是一个有效的数字", Toast.LENGTH_SHORT);
             }
 
         } catch (Exception e) {
-            Toast.makeText(this, "表达式格式错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            showDebouncedToast("算式不合法" , Toast.LENGTH_SHORT);
         }
     }
 
@@ -153,12 +204,16 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < cardViews.length; i++) {
             final int index = i;
             cardViews[i].setOnClickListener(v -> {
-                if (!cardUsed[index]) {
+                 //判断是否连续点击牌，且当前牌未使用
+                if (!cardUsed[index] && !lastClickedIsCard) {
                     // 将数字添加到输入框
                     appendToExpression(String.valueOf(cardValues[index]));
-
                     // 禁用该扑克牌
                     disableCard(index);
+                    // 标记最后一次点击的是牌
+                    lastClickedIsCard = true;
+                } else if (!cardUsed[index] && lastClickedIsCard) {
+                    showDebouncedToast("请选择符号按钮", Toast.LENGTH_SHORT);
                 }
             });
         }
@@ -226,15 +281,33 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void clear()
-    {
+    private void clear() {
         etExpression.setText(""); // 清空输入框
         enableAllCards(); // 启用所有扑克牌
+        lastClickedIsCard = false; // 重置牌点击状态
+
+        // 重置Toast防抖状态
+        isToastShowing = false;
+        if (currentToast != null) {
+            currentToast.cancel();
+            currentToast = null;
+        }
+        toastHandler.removeCallbacksAndMessages(null);
     }
 
     //向输入框追加符号
     private void appendToExpression(String symbol) {
         String currentText = etExpression.getText().toString();
         etExpression.setText(currentText + symbol);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 清理Toast相关资源，防止内存泄漏
+        if (currentToast != null) {
+            currentToast.cancel();
+        }
+        toastHandler.removeCallbacksAndMessages(null);
     }
 }
