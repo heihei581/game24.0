@@ -18,6 +18,8 @@ import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlEngine;
 import org.apache.commons.jexl3.JexlExpression;
 
+import com.example.game240.Calculate24;
+
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
@@ -29,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText etExpression; //输入框引用
     private JexlEngine jexlEngine;//第三方库计算引擎
     private boolean lastClickedIsCard = false; //记录最后一次是否点击的是扑克牌
+    private String result="6+6+6+6";//初始牌解
 
     // Toast防抖
     private boolean isToastShowing = false; // 标记Toast是否在冷却期
@@ -106,6 +109,12 @@ public class MainActivity extends AppCompatActivity {
             clear();
         });
 
+        // 获取提示按钮并设置点击事件
+        Button btnTips = findViewById(R.id.btn_Tips);
+        btnTips.setOnClickListener(v -> {
+            Tips();
+        });
+
         //获取符号按钮并设置点击事件（点击符号按钮后重置扑克牌状态）
         findViewById(R.id.btn_add).setOnClickListener(v -> {
             appendToExpression("+");
@@ -136,6 +145,8 @@ public class MainActivity extends AppCompatActivity {
         Button btnSubmit = findViewById(R.id.btn_submit);
         btnSubmit.setOnClickListener(v -> submitExpression());
     }
+
+
 
     //禁用软键盘
     private void disableSoftKeyboard() {
@@ -178,6 +189,7 @@ public class MainActivity extends AppCompatActivity {
                     // 延迟1秒后刷新牌面
                     new Handler().postDelayed(() -> {
                         enableAllCards();
+                        enableOP();
                         refreshCards();
                         etExpression.setText("");
                         lastClickedIsCard = false; // 重置牌点击状态
@@ -186,6 +198,7 @@ public class MainActivity extends AppCompatActivity {
                 else {
                     showDebouncedToast("计算错误 结果为："+result, Toast.LENGTH_SHORT);
                     enableAllCards();
+                    enableOP();
                     etExpression.setText("");
                     lastClickedIsCard = false;
                 }
@@ -221,10 +234,39 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshCards() {
         Random random = new Random();
+        enableOP();//启用所有符号
 
+        // 先一次性生成四张牌，直到能组成24点（带安全上限避免死循环）
+        final int[] candidate = new int[4];
+        boolean solvable = false;//初始标记为未找到
+
+        while (!solvable ) {
+            for (int i = 0; i < 4; i++) {
+                candidate[i] = random.nextInt(10) + 1; // 随机生成1~10四张牌
+            }
+
+            // 调用写的 Calculate24 类进行判断
+            double[] nums = new double[4];//nums用于计算
+            String[] exprs = new String[4];//exprs用于同步存储式子
+            for (int i = 0; i < 4; i++) {
+                nums[i] = candidate[i];
+                exprs[i] = String.valueOf(candidate[i]);
+            }
+
+            solvable = Calculate24.js(nums, exprs, 4);
+        }
+
+        if (solvable) {
+            // 打印找到的表达式到 Logcat
+            result=Calculate24.resultExpr;
+            System.out.println("Found 24 expression: " + Calculate24.resultExpr);
+        }
+
+        // 按原来的动画流程，把 candidate 的图片在动画完成时设置上去
         for (int i = 0; i < cardViews.length; i++) {
             ImageView card = cardViews[i];
             final int index = i; // 需要final用于lambda
+            final int newVal = candidate[index];
 
             // 阶段1：缩小+旋转+淡出（洗牌动作）
             card.animate()
@@ -235,13 +277,13 @@ public class MainActivity extends AppCompatActivity {
                     .setDuration(350)
                     .setStartDelay(i * 70)  // 依次延迟，有飞出的层次感
                     .withEndAction(() -> {
-                        // 阶段2：换牌并生成新数值
-                        int randomNum = random.nextInt(10) + 1;
-                        cardValues[index] = randomNum; // 保存新数值
+                        // 阶段2：换牌并生成新数值（这里使用 candidate 而不是每张单独随机）
                         int drawableId = getResources().getIdentifier(
-                                "c" + randomNum, "drawable", getPackageName()
+                                "c" + newVal, "drawable", getPackageName()
                         );
                         card.setImageResource(drawableId);
+                        // 同步到真正的 cardValues（只有在确定要显示 candidate 时才写入）
+                        cardValues[index] = newVal;
 
                         // 阶段3：弹性放大+淡入（恢复）
                         card.animate()
@@ -254,6 +296,19 @@ public class MainActivity extends AppCompatActivity {
                     });
         }
     }
+
+    private void Tips() {
+            etExpression.setText(result);
+            // 禁用所有扑克牌
+            for(int i=0;i<4;i++)
+            {
+                disableCard(i);
+            }
+            //禁用所有符号
+            disableOP();
+            lastClickedIsCard = false;   // 重置点击状态
+    }
+
 
     // 判断四张牌是否都使用了
     private boolean isAllCardsUsed() {
@@ -272,6 +327,22 @@ public class MainActivity extends AppCompatActivity {
         cardViews[index].setClickable(false); // 不可点击
     }
 
+    //禁用符号按钮
+    private void disableOP() {
+        findViewById(R.id.btn_add).setAlpha(0.5f); // 半透明
+        findViewById(R.id.btn_add).setClickable(false); // 不可点击
+        findViewById(R.id.btn_sub).setAlpha(0.5f); // 半透明
+        findViewById(R.id.btn_sub).setClickable(false); // 不可点击
+        findViewById(R.id.btn_mul).setAlpha(0.5f); // 半透明
+        findViewById(R.id.btn_mul).setClickable(false); // 不可点击
+        findViewById(R.id.btn_div).setAlpha(0.5f); // 半透明
+        findViewById(R.id.btn_div).setClickable(false); // 不可点击
+        findViewById(R.id.btn_left).setAlpha(0.5f); // 半透明
+        findViewById(R.id.btn_left).setClickable(false); // 不可点击
+        findViewById(R.id.btn_right).setAlpha(0.5f); // 半透明
+        findViewById(R.id.btn_right).setClickable(false); // 不可点击
+    }
+
     //启用所有扑克牌
     private void enableAllCards() {
         for (int i = 0; i < 4; i++) {
@@ -280,10 +351,26 @@ public class MainActivity extends AppCompatActivity {
             cardViews[i].setClickable(true); // 可点击
         }
     }
+    //启用所有符号
+    private void enableOP() {
+        findViewById(R.id.btn_add).setAlpha(1.0f);
+        findViewById(R.id.btn_add).setClickable(true);
+        findViewById(R.id.btn_sub).setAlpha(1.0f);
+        findViewById(R.id.btn_sub).setClickable(true);
+        findViewById(R.id.btn_mul).setAlpha(1.0f);
+        findViewById(R.id.btn_mul).setClickable(true);
+        findViewById(R.id.btn_div).setAlpha(1.0f);
+        findViewById(R.id.btn_div).setClickable(true);
+        findViewById(R.id.btn_left).setAlpha(1.0f);
+        findViewById(R.id.btn_left).setClickable(true);
+        findViewById(R.id.btn_right).setAlpha(1.0f);
+        findViewById(R.id.btn_right).setClickable(true);
+    }
 
     private void clear() {
         etExpression.setText(""); // 清空输入框
         enableAllCards(); // 启用所有扑克牌
+        enableOP();//启用所有符号
         lastClickedIsCard = false; // 重置牌点击状态
 
         // 重置Toast防抖状态

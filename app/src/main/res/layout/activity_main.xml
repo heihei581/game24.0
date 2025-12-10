@@ -184,6 +184,17 @@
             android:textSize="18sp" />
 
         <Button
+            android:id="@+id/btn_Tips"
+            android:layout_width="0dp"
+            android:layout_height="45dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="8dp"
+            android:text="提示"
+            android:background="@drawable/btn_tips_selector"
+            android:stateListAnimator="@animator/button_press_anim"
+            android:textSize="18sp" />
+
+        <Button
             android:id="@+id/btn_Refresh"
             android:layout_width="0dp"
             android:layout_height="45dp"
@@ -193,6 +204,8 @@
             android:background="@drawable/btn_refresh_selector"
             android:stateListAnimator="@animator/button_press_anim"
             android:textSize="18sp" />
+
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
