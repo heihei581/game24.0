@@ -11,15 +11,24 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Game240">
+
+        <!-- 1. 新增启动页 StartActivity 配置（核心：加 intent-filter 作为启动入口） -->
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
+            android:name=".StartActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+    </activity>
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
+    <!-- 2. 修改原 MainActivity 配置（移除 intent-filter，exported 改为 false） -->
+    <activity
+        android:name=".MainActivity"
+        android:exported="false"
+        android:screenOrientation="landscape">
+    </activity>
+</application>
 
-</manifest>
+    </manifest>
