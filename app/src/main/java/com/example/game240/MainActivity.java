@@ -6,6 +6,7 @@ import android.os.Looper;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -28,10 +29,15 @@ public class MainActivity extends AppCompatActivity {
     private ImageView[] cardViews; // 扑克牌的图片
     private int[] cardValues = {6,6,6,6};//扑克牌的值
     private boolean[] cardUsed = new boolean[4]; // 记录每张牌是否被使用
+    private boolean isTips=false;
     private EditText etExpression; //输入框引用
     private JexlEngine jexlEngine;//第三方库计算引擎
     private boolean lastClickedIsCard = false; //记录最后一次是否点击的是扑克牌
     private String result="6+6+6+6";//初始牌解
+
+    //得分变量
+    private int score = 0;
+    private TextView tvScore;
 
     // Toast防抖
     private boolean isToastShowing = false; // 标记Toast是否在冷却期
@@ -81,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void findViews() {
         etExpression = findViewById(R.id.et_expression);
+        tvScore = findViewById(R.id.tv_score);
         // 获取四个扑克牌ImageView
         final ImageView card1 = findViewById(R.id.card1);
         final ImageView card2 = findViewById(R.id.card2);
@@ -162,8 +169,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void submitExpression() {
-        String expression = etExpression.getText().toString().trim();
-        if (expression.isEmpty()) {
+        String originalExpression = etExpression.getText().toString().trim();
+        if (originalExpression.isEmpty()) {
             showDebouncedToast("请输入计算式", Toast.LENGTH_SHORT);
             return;
         }
@@ -175,17 +182,25 @@ public class MainActivity extends AppCompatActivity {
         }
 
         try {
-            // 1. 创建一个表达式对象
-            JexlExpression jexlExpression = jexlEngine.createExpression(expression);
+            // 关键：计算前将表达式中的整数替换为浮点数（如 8→8.0、4→4.0）
+            // 正则表达式 \d+ 匹配所有整数，替换为 $0.0（$0表示匹配到的数字）
+            String floatExpression = originalExpression.replaceAll("\\d+", "$0.0");
+
+            // 1. 创建浮点数表达式的JEXL对象
+            JexlExpression jexlExpression = jexlEngine.createExpression(floatExpression);
             // 2. 执行表达式并获取结果
             Object resultObject = jexlExpression.evaluate(null);
+
             // 确保结果是一个数字
             if (resultObject instanceof Number) {
                 double result = ((Number) resultObject).doubleValue();
 
                 // 判断结果是否为24
-                if (Math.abs(result - 24) < 1e-6) {
-                    showDebouncedToast("计算正确！", Toast.LENGTH_SHORT);
+                //为24且未使用提示按钮
+                if (Math.abs(result - 24) < 1e-6&& !isTips) {
+                    showDebouncedToast("计算正确！加十分！", Toast.LENGTH_SHORT);
+                    score += 10;
+                    tvScore.setText("得分：" + score);
                     // 延迟1秒后刷新牌面
                     new Handler().postDelayed(() -> {
                         enableAllCards();
@@ -194,6 +209,19 @@ public class MainActivity extends AppCompatActivity {
                         etExpression.setText("");
                         lastClickedIsCard = false; // 重置牌点击状态
                     }, 1000);
+                }
+                else if (Math.abs(result - 24) < 1e-6&& isTips) {
+                    showDebouncedToast("已使用提示", Toast.LENGTH_SHORT);
+                    // 延迟1秒后刷新牌面
+                    new Handler().postDelayed(() -> {
+                        enableAllCards();
+                        enableOP();
+                        refreshCards();
+                        etExpression.setText("");
+                        lastClickedIsCard = false; // 重置牌点击状态
+                        isTips=false;
+                    }, 1000);
+
                 }
                 else {
                     showDebouncedToast("计算错误 结果为："+result, Toast.LENGTH_SHORT);
@@ -208,7 +236,13 @@ public class MainActivity extends AppCompatActivity {
             }
 
         } catch (Exception e) {
-            showDebouncedToast("算式不合法" , Toast.LENGTH_SHORT);
+            // 打印异常便于调试（可选）
+            e.printStackTrace();
+            if (e instanceof ArithmeticException) {
+                showDebouncedToast("算式包含除零运算", Toast.LENGTH_SHORT);
+            } else {
+                showDebouncedToast("算式不合法" , Toast.LENGTH_SHORT);
+            }
         }
     }
 
@@ -235,6 +269,7 @@ public class MainActivity extends AppCompatActivity {
     private void refreshCards() {
         Random random = new Random();
         enableOP();//启用所有符号
+        isTips=false;
 
         // 先一次性生成四张牌，直到能组成24点（带安全上限避免死循环）
         final int[] candidate = new int[4];
@@ -298,6 +333,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void Tips() {
+            isTips=true;
             etExpression.setText(result);
             // 禁用所有扑克牌
             for(int i=0;i<4;i++)

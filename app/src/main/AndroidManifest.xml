@@ -13,6 +13,7 @@
         android:theme="@style/Theme.Game240">
 
         <!-- 1. 新增启动页 StartActivity 配置（核心：加 intent-filter 作为启动入口） -->
+        <!--  设置横屏竖屏      -->
         <activity
             android:name=".StartActivity"
             android:exported="true"
