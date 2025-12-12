@@ -39,7 +39,7 @@
         android:id="@+id/card_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="40dp"
         android:gravity="center"
         android:orientation="horizontal"
         android:paddingStart="16dp"
@@ -81,7 +81,7 @@
         android:id="@+id/input_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:gravity="center"
         android:orientation="horizontal"
         android:paddingStart="16dp"
@@ -176,7 +176,7 @@
         android:id="@+id/third_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:gravity="center"
         android:orientation="horizontal"
         android:paddingStart="16dp"
@@ -184,6 +184,16 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/input_container">
+
+        <ImageView
+            android:id="@+id/iv_record"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_marginHorizontal="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:scaleType="fitCenter"
+            android:src="@drawable/record" />
 
         <Button
             android:id="@+id/btn_clear"
@@ -229,6 +239,17 @@
             android:background="@drawable/btn_refresh_selector"
             android:stateListAnimator="@animator/button_press_anim"
             android:text="刷新牌面"
+            android:textSize="18sp" />
+
+        <Button
+            android:id="@+id/btn_Menu"
+            android:layout_width="0dp"
+            android:layout_height="45dp"
+            android:layout_marginHorizontal="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/btn_menu_selector"
+            android:stateListAnimator="@animator/button_press_anim"
+            android:text="菜单"
             android:textSize="18sp" />
 
 

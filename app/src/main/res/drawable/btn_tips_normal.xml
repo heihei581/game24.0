@@ -2,14 +2,14 @@
     <!-- 底层：模拟阴影，右下偏移3dp -->
     <item android:left="3dp" android:top="3dp">
         <shape android:shape="rectangle">
-            <solid android:color="#654321" />  <!-- 阴影颜色 -->
+            <solid android:color="#cc9a06" />  <!-- 阴影颜色 -->
             <corners android:radius="8dp" />
         </shape>
     </item>
     <!-- 顶层：按钮本体 -->
     <item android:right="3dp" android:bottom="3dp">
         <shape android:shape="rectangle">
-            <solid android:color="#8B4513" />  <!-- 按钮原色 -->
+            <solid android:color="#ffc107" />  <!-- 按钮原色 -->
             <corners android:radius="8dp" />
         </shape>
     </item>

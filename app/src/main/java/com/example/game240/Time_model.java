@@ -30,6 +30,12 @@ import com.example.game240.Calculate24;
 
 import java.util.Random;
 
+// 新增的 imports（用于音频与动画）
+import android.media.MediaPlayer;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.view.animation.LinearInterpolator;
+
 public class Time_model extends AppCompatActivity {
 
     //存储扑克牌数值和状态
@@ -49,7 +55,7 @@ public class Time_model extends AppCompatActivity {
     // ====================== 新增：倒计时相关变量 ======================
     private TextView tvCountdown; // 倒计时文本控件
     private CountDownTimer countDownTimer; // 倒计时器
-    private long remainingTime = 500 * 1000; // 剩余时间（初始200秒，单位：毫秒）
+    private long remainingTime = 500 * 1000; // 剩余时间（初始500s，单位：毫秒）
     private static final long TOTAL_TIME = 500 * 1000; // 初始总时长
     private static final long INTERVAL = 1000; // 倒计时间隔（1秒）
     private boolean isCountdownFinished = false; // 标记倒计时是否结束
@@ -62,6 +68,13 @@ public class Time_model extends AppCompatActivity {
     private Toast currentToast; // 当前显示的Toast对象
     private Handler toastHandler = new Handler(Looper.getMainLooper());
     private static final long TOAST_DEBOUNCE_TIME = 2000; // Toast防抖冷却时间（毫秒）
+
+    // ==== 新增：音乐与动画字段 ====
+    private ImageView ivRecord;
+    private MediaPlayer bgMusic;
+    private ObjectAnimator recordAnimator;
+    private boolean isRecordPlaying = false;
+    // =============================
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,6 +116,11 @@ public class Time_model extends AppCompatActivity {
 
         // 初始化函数，启动就干的
         findViews();//绑定扑克牌并初始化cardViews数组
+
+        // ====== 新增：设置音乐与旋转唱片（必须在 findViews() 之后，因为需要 iv_record） ======
+        setupRecordPlayer();
+        // ================================================================================
+
         setupJexlEngine();//初始化计算引擎
         setupCardClickListeners();//扑克牌监听
         setupButtonListeners();//按钮监听
@@ -143,6 +161,8 @@ public class Time_model extends AppCompatActivity {
         final ImageView card4 = findViewById(R.id.card4);
         // 初始化数组
         cardViews = new ImageView[]{card1, card2, card3, card4};
+
+        // （注意：iv_record 不在此处绑定也可以，setupRecordPlayer() 中会绑定）
     }
 
     private void setupJexlEngine() {
@@ -165,7 +185,7 @@ public class Time_model extends AppCompatActivity {
 
             // ====================== 新增：刷新牌面后重启倒计时 ======================
             if (isCountdownFinished) {
-                remainingTime = TOTAL_TIME; // 倒计时结束后刷新则重置为200秒
+                remainingTime = TOTAL_TIME; // 倒计时结束后刷新则重置为 TOTAL_TIME
                 isCountdownFinished = false;
             }
             startCountdown();
@@ -543,10 +563,89 @@ public class Time_model extends AppCompatActivity {
         etExpression.setText(currentText + symbol);
     }
 
+    // ======= 新增方法：初始化 MediaPlayer 与 旋转动画，并绑定 iv_record 点击事件 =======
+    private void setupRecordPlayer() {
+        // iv_record 在布局中已存在（third_container），在此处绑定
+        ivRecord = findViewById(R.id.iv_record);
+
+        // 初始化 MediaPlayer（确保文件位于 res/raw/bg_music.mp3）
+        try {
+            bgMusic = MediaPlayer.create(this, R.raw.bg_music);
+            if (bgMusic != null) {
+                bgMusic.setLooping(true);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            bgMusic = null;
+        }
+
+        // 使用 ObjectAnimator 实现匀速无限旋转 (7s 一周，与网页中一致)
+        recordAnimator = ObjectAnimator.ofFloat(ivRecord, "rotation", 0f, 360f);
+        recordAnimator.setDuration(7000); // 7 秒一圈
+        recordAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        recordAnimator.setInterpolator(new LinearInterpolator());
+
+        // 点击切换播放 / 暂停 与动画
+        ivRecord.setOnClickListener(v -> {
+            if (bgMusic == null) return; // 安全检查
+
+            if (isRecordPlaying) {
+                // 暂停音乐并停止动画
+                try {
+                    if (bgMusic.isPlaying()) bgMusic.pause();
+                } catch (IllegalStateException ignored) {}
+                recordAnimator.cancel();
+                // 可选：重置角度到 0（与网页移除 class 后无旋转效果一致）
+                ivRecord.setRotation(0f);
+            } else {
+                // 播放音乐并启动动画
+                try {
+                    bgMusic.start();
+                } catch (IllegalStateException ex) {
+                    ex.printStackTrace();
+                }
+                recordAnimator.start();
+            }
+            isRecordPlaying = !isRecordPlaying;
+        });
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // 暂停音乐与动画（进入后台时）
+        if (bgMusic != null && bgMusic.isPlaying()) {
+            try { bgMusic.pause(); } catch (IllegalStateException ignored) {}
+        }
+        if (recordAnimator != null && recordAnimator.isRunning()) {
+            recordAnimator.cancel();
+        }
+        isRecordPlaying = false;
+
+        // 若你需要在暂停时也停止倒计时，可在此处取消 countDownTimer（根据需求）
+        // if (countDownTimer != null) countDownTimer.cancel();
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // 清理Toast相关资源，防止内存泄漏
+
+        // 清理MediaPlayer资源，防止内存泄漏
+        if (bgMusic != null) {
+            try {
+                if (bgMusic.isPlaying()) bgMusic.stop();
+            } catch (Exception ignored) {}
+            bgMusic.release();
+            bgMusic = null;
+        }
+
+        // 取消动画
+        if (recordAnimator != null) {
+            recordAnimator.cancel();
+            recordAnimator = null;
+        }
+
+        // 清理Toast相关资源，防止内存泄漏（保留你原有逻辑）
         if (currentToast != null) {
             currentToast.cancel();
         }

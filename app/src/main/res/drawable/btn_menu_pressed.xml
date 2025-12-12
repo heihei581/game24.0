@@ -1,0 +1,20 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 底层：阴影缩小到2px偏移 -->
+    <item android:left="3dp" android:top="3dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#55351F" />  <!-- 按下阴影颜色变深 -->
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+    <!-- 顶层：按钮整体下移2px -->
+    <item
+        android:left="2dp"
+        android:top="2dp"
+        android:right="1dp"
+        android:bottom="1dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#6B4A2E" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+</layer-list>

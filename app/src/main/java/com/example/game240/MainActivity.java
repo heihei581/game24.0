@@ -1,8 +1,14 @@
 package com.example.game240;
 
+//沉浸式所需类
+import android.os.Build;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -48,13 +54,39 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+        // 新增：适配刘海屏（让内容延伸到刘海区域）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            getWindow().getAttributes().layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+
+        //EdgeToEdge.enable(this);
+
         setContentView(R.layout.activity_main);
+
+        // ========== 修改WindowInsets监听（去掉系统栏的padding） ==========
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            // 原来的代码是适应系统栏，现在隐藏系统栏，所以padding设为0
+            v.setPadding(0, 0, 0, 0);
             return insets;
         });
+
+        // ========== 新增：隐藏ActionBar + 沉浸式模式代码 ==========
+        // 隐藏标题栏（如果有）
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().hide();
+        }
+        // Android 11+ 隐藏状态栏/导航栏（粘性沉浸式）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getWindow().setDecorFitsSystemWindows(false);
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                // 隐藏状态栏 + 导航栏
+                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                // 滑动边缘临时显示，无操作自动隐藏
+                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        }
 
         // 初始化函数，启动就干的
         findViews();//绑定扑克牌并初始化cardViews数组
