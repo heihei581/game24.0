@@ -15,10 +15,18 @@ public class StartActivity extends AppCompatActivity {
 
         // 找到“练习模式”按钮（对应start.xml里的btn_practice_mode）
         Button btnPractice = findViewById(R.id.btn_practice_mode);
+        //找到限时模式按钮
+        Button btnTime = findViewById(R.id.btn_time_limit_mode);
 
         // 按钮点击跳转到原游戏界面（MainActivity）
         btnPractice.setOnClickListener(v -> {
             Intent intent = new Intent(StartActivity.this, MainActivity.class);
+            startActivity(intent);
+            finish(); // 可选：关闭启动页，返回时直接退出APP
+        });
+
+        btnTime.setOnClickListener(v -> {
+            Intent intent = new Intent(StartActivity.this, Time_model.class);
             startActivity(intent);
             finish(); // 可选：关闭启动页，返回时直接退出APP
         });
