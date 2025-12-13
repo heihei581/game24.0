@@ -1,11 +1,16 @@
 package com.example.game240;
 
 //沉浸式所需类
+import android.content.Intent;
 import android.os.Build;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.WindowManager;
@@ -29,6 +34,12 @@ import com.example.game240.Calculate24;
 
 import java.util.Random;
 
+// 新增的 imports（用于音频与动画）
+import android.media.MediaPlayer;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.view.animation.LinearInterpolator;
+
 public class MainActivity extends AppCompatActivity {
 
     //存储扑克牌数值和状态
@@ -51,8 +62,22 @@ public class MainActivity extends AppCompatActivity {
     private Handler toastHandler = new Handler(Looper.getMainLooper());
     private static final long TOAST_DEBOUNCE_TIME = 2000; // Toast防抖冷却时间（毫秒）
 
+    // ==== 新增：音乐与动画字段 ====
+    private ImageView ivRecord;
+    private MediaPlayer bgMusic;
+    private ObjectAnimator recordAnimator;
+    private boolean isRecordPlaying = false;
+    // =============================
+
+    // ========== 最小修改新增：暂停界面核心变量 ==========
+    private View pauseView; // 暂停界面View
+    private Button btnMenu; // 菜单/暂停按钮
+    private boolean isGamePaused = false; // 标记游戏是否暂停
+    // ==================================================
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         // 新增：适配刘海屏（让内容延伸到刘海区域）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -90,6 +115,13 @@ public class MainActivity extends AppCompatActivity {
 
         // 初始化函数，启动就干的
         findViews();//绑定扑克牌并初始化cardViews数组
+
+        // ====== 新增：设置音乐与旋转唱片（必须在 findViews() 之后，因为需要 iv_record） ======
+        setupRecordPlayer();
+
+        // ========== 初始化暂停界面 ==========
+        initPauseView();
+
         setupJexlEngine();//初始化计算引擎
         setupCardClickListeners();//扑克牌监听
         setupButtonListeners();//按钮监听
@@ -117,9 +149,162 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    // 初始化暂停界面核心逻辑 ==========
+    private void initPauseView() {
+
+        LayoutInflater inflater = LayoutInflater.from(this);
+        pauseView = inflater.inflate(R.layout.pause_menu, null);
+
+        // 添加到Activity根布局（默认隐藏）
+        ViewGroup rootView = findViewById(android.R.id.content);
+        rootView.addView(pauseView);
+        pauseView.setVisibility(View.GONE);
+
+        // 绑定暂停界面按钮事件
+        Button btnNew = pauseView.findViewById(R.id.btn_new);
+        Button btnResume = pauseView.findViewById(R.id.btn_resume);
+        Button btnHelp = pauseView.findViewById(R.id.btn_help);
+        Button btnExit = pauseView.findViewById(R.id.btn_exit);
+
+        //新游戏
+        // 新游戏按钮点击事件
+        btnNew.setOnClickListener(v -> {
+            // 1. 隐藏暂停界面（视觉清理）
+            pauseView.setVisibility(View.GONE);
+            isGamePaused = false;
+
+            // 2. 清理资源（避免跳转后音乐/动画/倒计时仍后台运行）
+            // 停止并释放背景音乐
+            if (bgMusic != null) {
+                if (bgMusic.isPlaying()) bgMusic.stop();
+                bgMusic.release();
+                bgMusic = null;
+            }
+            // 停止并销毁旋转动画
+            if (recordAnimator != null) {
+                recordAnimator.cancel();
+                recordAnimator = null;
+            }
+
+            // 3. 跳转到 start.xml 对应的 Activity
+            Intent intent = new Intent(MainActivity.this, StartActivity.class);
+            // 清除返回栈，避免用户返回时回到当前游戏界面（提升体验）
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+
+            // 4. 关闭当前游戏界面（Time_model）
+            finish();
+        });
+
+
+        // 继续游戏
+        btnResume.setOnClickListener(v -> {
+            pauseView.setVisibility(View.GONE);
+            isGamePaused = false;
+            // 恢复音乐和动画
+            if (bgMusic != null && !bgMusic.isPlaying() && isRecordPlaying) {
+                bgMusic.start();
+            }
+            // 恢复唱片旋转动画
+            if (recordAnimator != null && isRecordPlaying) {
+                // 如果动画已暂停，先恢复；如果未运行，直接启动
+                if (recordAnimator.isPaused()) {
+                    recordAnimator.resume();
+                } else if (!recordAnimator.isRunning()) {
+                    // 保留当前旋转角度，避免重新从0开始
+                    float currentRotation = ivRecord.getRotation();
+                    recordAnimator.setFloatValues(currentRotation, currentRotation + 360f);
+                    recordAnimator.start();
+                }
+            }
+            // 恢复操作
+            enableGameOperations();
+            //刷新牌面
+            refreshCards();
+
+        });
+
+        // 帮助按钮
+        btnHelp.setOnClickListener(v -> {
+            pauseView.setVisibility(View.GONE);
+            isGamePaused = false;
+
+            for(int i=4;i<8;i++)
+            {
+                int drawableId = getResources().getIdentifier(
+                        "help" + i, "drawable", getPackageName()
+                );
+                cardViews[i-4].setImageResource(drawableId);
+            }
+
+            // 恢复音乐和动画
+            if (bgMusic != null && !bgMusic.isPlaying() && isRecordPlaying) {
+                bgMusic.start();
+            }
+            // 恢复唱片旋转动画
+            if (recordAnimator != null && isRecordPlaying) {
+                // 如果动画已暂停，先恢复；如果未运行，直接启动
+                if (recordAnimator.isPaused()) {
+                    recordAnimator.resume();
+                } else if (!recordAnimator.isRunning()) {
+                    // 保留当前旋转角度，避免重新从0开始
+                    float currentRotation = ivRecord.getRotation();
+                    recordAnimator.setFloatValues(currentRotation, currentRotation + 360f);
+                    recordAnimator.start();
+                }
+            }
+            findViewById(R.id.iv_record).setClickable(true);
+            findViewById(R.id.btn_Refresh).setClickable(true);
+            findViewById(R.id.btn_Menu).setClickable(true);
+
+        });
+
+        // 退出游戏
+        btnExit.setOnClickListener(v -> finish());
+    }
+
+    // ========== 禁用游戏操作（暂停时） ==========
+    private void disableGameOperations() {
+        // 禁用扑克牌
+        for (ImageView card : cardViews) card.setClickable(false);
+        // 禁用功能按钮
+        findViewById(R.id.btn_clear).setClickable(false);
+        findViewById(R.id.btn_Refresh).setClickable(false);
+        findViewById(R.id.btn_Tips).setClickable(false);
+        findViewById(R.id.btn_submit).setClickable(false);
+        findViewById(R.id.iv_record).setClickable(false);
+        // 禁用符号按钮
+        disableOP();
+        // 禁用菜单按钮
+        btnMenu.setClickable(false);
+    }
+    // ==========================================================
+
+    // ========== 最小修改新增：启用游戏操作（恢复时） ==========
+    private void enableGameOperations() {
+        // 启用未使用的扑克牌
+        for (int i = 0; i < cardViews.length; i++) {
+            if (!cardUsed[i]) cardViews[i].setClickable(true);
+        }
+        // 启用功能按钮
+        findViewById(R.id.btn_clear).setClickable(true);
+        findViewById(R.id.btn_Refresh).setClickable(true);
+        findViewById(R.id.btn_Tips).setClickable(true);
+        findViewById(R.id.btn_submit).setClickable(true);
+        findViewById(R.id.iv_record).setClickable(true);
+        // 启用符号按钮
+        enableOP();
+        // 启用菜单按钮
+        btnMenu.setClickable(true);
+    }
+    // ==========================================================
+
     private void findViews() {
         etExpression = findViewById(R.id.et_expression);
         tvScore = findViewById(R.id.tv_score);
+        //绑定菜单按钮
+        btnMenu = findViewById(R.id.btn_Menu);
         // 获取四个扑克牌ImageView
         final ImageView card1 = findViewById(R.id.card1);
         final ImageView card2 = findViewById(R.id.card2);
@@ -145,6 +330,7 @@ public class MainActivity extends AppCompatActivity {
         Button btnRefresh = findViewById(R.id.btn_Refresh);
         btnRefresh.setOnClickListener(v -> {
             refreshCards();
+            enableGameOperations();
             clear();
         });
 
@@ -183,6 +369,20 @@ public class MainActivity extends AppCompatActivity {
         //获取提交按钮并设置点击事件
         Button btnSubmit = findViewById(R.id.btn_submit);
         btnSubmit.setOnClickListener(v -> submitExpression());
+
+        //菜单按钮点击事件
+        btnMenu.setOnClickListener(v -> {
+            if (!isGamePaused) {
+                isGamePaused = true;
+                // 暂停音乐和动画
+                if (bgMusic != null && bgMusic.isPlaying()) bgMusic.pause();
+                if (recordAnimator != null && recordAnimator.isRunning()) recordAnimator.pause();
+                // 禁用操作
+                disableGameOperations();
+                // 显示暂停界面
+                pauseView.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
 
@@ -365,16 +565,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void Tips() {
-            isTips=true;
-            etExpression.setText(result);
-            // 禁用所有扑克牌
-            for(int i=0;i<4;i++)
-            {
-                disableCard(i);
-            }
-            //禁用所有符号
-            disableOP();
-            lastClickedIsCard = false;   // 重置点击状态
+        isTips=true;
+        etExpression.setText(result);
+        // 禁用所有扑克牌
+        for(int i=0;i<4;i++)
+        {
+            disableCard(i);
+        }
+        //禁用所有符号
+        disableOP();
+        lastClickedIsCard = false;   // 重置点击状态
     }
 
 
@@ -456,10 +656,89 @@ public class MainActivity extends AppCompatActivity {
         etExpression.setText(currentText + symbol);
     }
 
+    // ======= 新增方法：初始化 MediaPlayer 与 旋转动画，并绑定 iv_record 点击事件 =======
+    private void setupRecordPlayer() {
+        // iv_record 在布局中已存在（third_container），在此处绑定
+        ivRecord = findViewById(R.id.iv_record);
+
+        // 初始化 MediaPlayer（确保文件位于 res/raw/bg_music.mp3）
+        try {
+            bgMusic = MediaPlayer.create(this, R.raw.bg_music);
+            if (bgMusic != null) {
+                bgMusic.setLooping(true);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            bgMusic = null;
+        }
+
+        // 使用 ObjectAnimator 实现匀速无限旋转 (7s 一周，与网页中一致)
+        recordAnimator = ObjectAnimator.ofFloat(ivRecord, "rotation", 0f, 360f);
+        recordAnimator.setDuration(7000); // 7 秒一圈
+        recordAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        recordAnimator.setInterpolator(new LinearInterpolator());
+
+        // 点击切换播放 / 暂停 与动画
+        ivRecord.setOnClickListener(v -> {
+            if (bgMusic == null) return; // 安全检查
+
+            if (isRecordPlaying) {
+                // 暂停音乐并停止动画
+                try {
+                    if (bgMusic.isPlaying()) bgMusic.pause();
+                } catch (IllegalStateException ignored) {}
+                recordAnimator.cancel();
+                // 可选：重置角度到 0（与网页移除 class 后无旋转效果一致）
+                ivRecord.setRotation(0f);
+            } else {
+                // 播放音乐并启动动画
+                try {
+                    bgMusic.start();
+                } catch (IllegalStateException ex) {
+                    ex.printStackTrace();
+                }
+                recordAnimator.start();
+            }
+            isRecordPlaying = !isRecordPlaying;
+        });
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // 暂停音乐与动画（进入后台时）
+        if (bgMusic != null && bgMusic.isPlaying()) {
+            try { bgMusic.pause(); } catch (IllegalStateException ignored) {}
+        }
+        if (recordAnimator != null && recordAnimator.isRunning()) {
+            recordAnimator.cancel();
+        }
+        isRecordPlaying = false;
+
+        // 若你需要在暂停时也停止倒计时，可在此处取消 countDownTimer（根据需求）
+        // if (countDownTimer != null) countDownTimer.cancel();
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // 清理Toast相关资源，防止内存泄漏
+
+        // 清理MediaPlayer资源，防止内存泄漏
+        if (bgMusic != null) {
+            try {
+                if (bgMusic.isPlaying()) bgMusic.stop();
+            } catch (Exception ignored) {}
+            bgMusic.release();
+            bgMusic = null;
+        }
+
+        // 取消动画
+        if (recordAnimator != null) {
+            recordAnimator.cancel();
+            recordAnimator = null;
+        }
+
+        // 清理Toast相关资源，防止内存泄漏（保留你原有逻辑）
         if (currentToast != null) {
             currentToast.cancel();
         }

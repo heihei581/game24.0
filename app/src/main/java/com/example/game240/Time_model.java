@@ -1,7 +1,11 @@
 package com.example.game240;
 
 //沉浸式所需类
+import android.content.Intent;
 import android.os.Build;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 
@@ -56,7 +60,7 @@ public class Time_model extends AppCompatActivity {
     private TextView tvCountdown; // 倒计时文本控件
     private CountDownTimer countDownTimer; // 倒计时器
     private long remainingTime = 500 * 1000; // 剩余时间（初始500s，单位：毫秒）
-    private static final long TOTAL_TIME = 500 * 1000; // 初始总时长
+    private static long TOTAL_TIME = 500 * 1000; // 初始总时长
     private static final long INTERVAL = 1000; // 倒计时间隔（1秒）
     private boolean isCountdownFinished = false; // 标记倒计时是否结束
     // =================================================================
@@ -76,10 +80,22 @@ public class Time_model extends AppCompatActivity {
     private boolean isRecordPlaying = false;
     // =============================
 
+    // ========== 暂停界面核心变量 ==========
+    private View pauseView; // 暂停界面View
+    private Button btnMenu; // 菜单/暂停按钮
+    private boolean isGamePaused = false; // 标记游戏是否暂停
+    // ==================================================
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
+
+        // ===== 新增：接收自定义时间 =====
+        long customTimeSeconds = getIntent().getLongExtra("CUSTOM_TIME_SECONDS", 500);
+        TOTAL_TIME = customTimeSeconds * 1000; // 转换为毫秒
+        remainingTime = TOTAL_TIME; // 初始化剩余时间为自定义时间
+
         // 新增：适配刘海屏（让内容延伸到刘海区域）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             getWindow().getAttributes().layoutInDisplayCutoutMode =
@@ -117,9 +133,13 @@ public class Time_model extends AppCompatActivity {
         // 初始化函数，启动就干的
         findViews();//绑定扑克牌并初始化cardViews数组
 
+        tvCountdown.setText("倒计时：" + customTimeSeconds + "s");
+
         // ====== 新增：设置音乐与旋转唱片（必须在 findViews() 之后，因为需要 iv_record） ======
         setupRecordPlayer();
-        // ================================================================================
+
+        // ========== 初始化暂停界面 ==========
+        initPauseView();
 
         setupJexlEngine();//初始化计算引擎
         setupCardClickListeners();//扑克牌监听
@@ -148,12 +168,173 @@ public class Time_model extends AppCompatActivity {
         }
     }
 
+
+    // 初始化暂停界面核心逻辑 ==========
+    private void initPauseView() {
+
+        LayoutInflater inflater = LayoutInflater.from(this);
+        pauseView = inflater.inflate(R.layout.pause_menu, null);
+
+        // 添加到Activity根布局（默认隐藏）
+        ViewGroup rootView = findViewById(android.R.id.content);
+        rootView.addView(pauseView);
+        pauseView.setVisibility(View.GONE);
+
+        // 绑定暂停界面按钮事件
+        Button btnNew = pauseView.findViewById(R.id.btn_new);
+        Button btnResume = pauseView.findViewById(R.id.btn_resume);
+        Button btnHelp = pauseView.findViewById(R.id.btn_help);
+        Button btnExit = pauseView.findViewById(R.id.btn_exit);
+
+        //新游戏
+        // 新游戏按钮点击事件
+        btnNew.setOnClickListener(v -> {
+            // 1. 隐藏暂停界面（视觉清理）
+            pauseView.setVisibility(View.GONE);
+            isGamePaused = false;
+
+            // 2. 清理资源（避免跳转后音乐/动画/倒计时仍后台运行）
+            // 停止并释放背景音乐
+            if (bgMusic != null) {
+                if (bgMusic.isPlaying()) bgMusic.stop();
+                bgMusic.release();
+                bgMusic = null;
+            }
+            // 停止并销毁旋转动画
+            if (recordAnimator != null) {
+                recordAnimator.cancel();
+                recordAnimator = null;
+            }
+            // 取消倒计时器
+            if (countDownTimer != null) {
+                countDownTimer.cancel();
+                countDownTimer = null;
+            }
+
+            // 3. 跳转到 start.xml 对应的 Activity
+            Intent intent = new Intent(Time_model.this, StartActivity.class);
+            // 清除返回栈，避免用户返回时回到当前游戏界面（提升体验）
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+
+            // 4. 关闭当前游戏界面（Time_model）
+            finish();
+        });
+
+
+        // 继续游戏
+        btnResume.setOnClickListener(v -> {
+            pauseView.setVisibility(View.GONE);
+            isGamePaused = false;
+            // 恢复倒计时
+            startCountdown();
+            // 恢复音乐和动画
+            if (bgMusic != null && !bgMusic.isPlaying() && isRecordPlaying) {
+                bgMusic.start();
+            }
+            // 恢复唱片旋转动画
+            if (recordAnimator != null && isRecordPlaying) {
+                // 如果动画已暂停，先恢复；如果未运行，直接启动
+                if (recordAnimator.isPaused()) {
+                    recordAnimator.resume();
+                } else if (!recordAnimator.isRunning()) {
+                    // 保留当前旋转角度，避免重新从0开始
+                    float currentRotation = ivRecord.getRotation();
+                    recordAnimator.setFloatValues(currentRotation, currentRotation + 360f);
+                    recordAnimator.start();
+                }
+            }
+            // 恢复操作
+            enableGameOperations();
+            //刷新牌面
+            refreshCards();
+
+        });
+
+        // 帮助按钮
+        btnHelp.setOnClickListener(v -> {
+            pauseView.setVisibility(View.GONE);
+            isGamePaused = false;
+
+            for(int i=0;i<4;i++)
+            {
+                int drawableId = getResources().getIdentifier(
+                        "help" + i, "drawable", getPackageName()
+                );
+                cardViews[i].setImageResource(drawableId);
+            }
+
+            // 恢复音乐和动画
+            if (bgMusic != null && !bgMusic.isPlaying() && isRecordPlaying) {
+                bgMusic.start();
+            }
+            // 恢复唱片旋转动画
+            if (recordAnimator != null && isRecordPlaying) {
+                // 如果动画已暂停，先恢复；如果未运行，直接启动
+                if (recordAnimator.isPaused()) {
+                    recordAnimator.resume();
+                } else if (!recordAnimator.isRunning()) {
+                    // 保留当前旋转角度，避免重新从0开始
+                    float currentRotation = ivRecord.getRotation();
+                    recordAnimator.setFloatValues(currentRotation, currentRotation + 360f);
+                    recordAnimator.start();
+                }
+            }
+            findViewById(R.id.iv_record).setClickable(true);
+            findViewById(R.id.btn_Refresh).setClickable(true);
+            findViewById(R.id.btn_Menu).setClickable(true);
+
+        });
+
+        // 退出游戏
+        btnExit.setOnClickListener(v -> finish());
+    }
+    // ==========================================================
+
+    // ========== 最小修改新增：禁用游戏操作（暂停时） ==========
+    private void disableGameOperations() {
+        // 禁用扑克牌
+        for (ImageView card : cardViews) card.setClickable(false);
+        // 禁用功能按钮
+        findViewById(R.id.btn_clear).setClickable(false);
+        findViewById(R.id.btn_Refresh).setClickable(false);
+        findViewById(R.id.btn_Tips).setClickable(false);
+        findViewById(R.id.btn_submit).setClickable(false);
+        findViewById(R.id.iv_record).setClickable(false);
+        // 禁用符号按钮
+        disableOP();
+        // 禁用菜单按钮
+        btnMenu.setClickable(false);
+    }
+    // ==========================================================
+
+    // ========== 最小修改新增：启用游戏操作（恢复时） ==========
+    private void enableGameOperations() {
+        // 启用未使用的扑克牌
+        for (int i = 0; i < cardViews.length; i++) {
+            if (!cardUsed[i]) cardViews[i].setClickable(true);
+        }
+        // 启用功能按钮
+        findViewById(R.id.btn_clear).setClickable(true);
+        findViewById(R.id.btn_Refresh).setClickable(true);
+        findViewById(R.id.btn_Tips).setClickable(true);
+        findViewById(R.id.btn_submit).setClickable(true);
+        findViewById(R.id.iv_record).setClickable(true);
+        // 启用符号按钮
+        enableOP();
+        // 启用菜单按钮
+        btnMenu.setClickable(true);
+    }
+    // ==========================================================
+
     private void findViews() {
         etExpression = findViewById(R.id.et_expression);
         tvScore = findViewById(R.id.tv_score);
         // ====================== 新增：绑定倒计时文本控件 ======================
         tvCountdown = findViewById(R.id.tv_countdown);
         // =================================================================
+        //绑定菜单按钮
+        btnMenu = findViewById(R.id.btn_Menu);
         // 获取四个扑克牌ImageView
         final ImageView card1 = findViewById(R.id.card1);
         final ImageView card2 = findViewById(R.id.card2);
@@ -181,13 +362,8 @@ public class Time_model extends AppCompatActivity {
         Button btnRefresh = findViewById(R.id.btn_Refresh);
         btnRefresh.setOnClickListener(v -> {
             refreshCards();
+            enableGameOperations();
             clear();
-
-            // ====================== 新增：刷新牌面后重启倒计时 ======================
-            if (isCountdownFinished) {
-                remainingTime = TOTAL_TIME; // 倒计时结束后刷新则重置为 TOTAL_TIME
-                isCountdownFinished = false;
-            }
             startCountdown();
             // =================================================================
 
@@ -236,6 +412,22 @@ public class Time_model extends AppCompatActivity {
         //获取提交按钮并设置点击事件
         Button btnSubmit = findViewById(R.id.btn_submit);
         btnSubmit.setOnClickListener(v -> submitExpression());
+
+        //菜单按钮点击事件
+        btnMenu.setOnClickListener(v -> {
+            if (!isGamePaused) {
+                isGamePaused = true;
+                // 暂停倒计时
+                if (countDownTimer != null) countDownTimer.cancel();
+                // 暂停音乐和动画
+                if (bgMusic != null && bgMusic.isPlaying()) bgMusic.pause();
+                if (recordAnimator != null && recordAnimator.isRunning()) recordAnimator.pause();
+                // 禁用操作
+                disableGameOperations();
+                // 显示暂停界面
+                pauseView.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
 
@@ -264,6 +456,7 @@ public class Time_model extends AppCompatActivity {
 
                     // 倒计时结束：禁用所有操作
                     showDebouncedToast("时间到！游戏结束", Toast.LENGTH_LONG);
+
                     disableAllOperations();
                 }
             }.start();
@@ -279,7 +472,14 @@ public class Time_model extends AppCompatActivity {
         }
         // 禁用所有符号按钮
         disableOP();
-        // 禁用提交、提示、刷新按钮
+        // 禁用继续游戏，唱片，清空、提交、提示、刷新按钮
+        bgMusic.stop();
+        recordAnimator.cancel();
+        recordAnimator = null;
+        findViewById(R.id.btn_resume).setClickable(false);
+        findViewById(R.id.btn_resume).setAlpha(0.5f);
+        findViewById(R.id.iv_record).setClickable(false);
+        findViewById(R.id.iv_record).setAlpha(0.5f);
         findViewById(R.id.btn_clear).setClickable(false);
         findViewById(R.id.btn_clear).setAlpha(0.5f);
         findViewById(R.id.btn_submit).setClickable(false);
@@ -338,7 +538,7 @@ public class Time_model extends AppCompatActivity {
                 if (Math.abs(result - 24) < 1e-6&& !isTips) {
                     showDebouncedToast("计算正确！加十分！", Toast.LENGTH_SHORT);
                     score += 10;
-                    tvScore.setText("限时模式：" + score);
+                    tvScore.setText("得分：" + score);
                     // 延迟1秒后刷新牌面
                     new Handler().postDelayed(() -> {
                         enableAllCards();

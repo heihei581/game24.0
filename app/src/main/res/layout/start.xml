@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/background">
 
-    <!-- 按钮容器：垂直排列（核心修改：orientation="vertical"） -->
+    <!-- 按钮容器：垂直排列 -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -34,15 +34,41 @@
             android:text="练习模式"
             android:textSize="25sp" />
 
-        <!-- 限时模式按钮 -->
-        <Button
-            android:id="@+id/btn_time_limit_mode"
-            android:layout_width="200dp"
-            android:layout_height="45dp"
-            android:background="@drawable/btn_submit_selector"
-            android:stateListAnimator="@animator/button_press_anim"
-            android:text="限时模式"
-            android:textSize="25sp" />
+        <!-- 限时模式容器：水平排列（按钮 + 时间输入框） -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:spacing="12dp">
+
+            <!-- 限时模式按钮 -->
+            <Button
+                android:id="@+id/btn_time_limit_mode"
+                android:layout_width="200dp"
+                android:layout_height="45dp"
+                android:background="@drawable/btn_submit_selector"
+                android:stateListAnimator="@animator/button_press_anim"
+                android:text="限时模式"
+                android:textSize="25sp" />
+
+            <!-- 时间设置输入框 -->
+            <EditText
+                android:id="@+id/et_time_setting"
+                android:layout_width="100dp"
+                android:layout_height="45dp"
+                android:hint="设置秒数"
+                android:background="@drawable/btn_submit_selector"
+                android:inputType="number"
+                android:maxLines="1"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:textAlignment="center"
+                android:textSize="18sp"
+                android:textColor="#000000" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
