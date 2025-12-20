@@ -62,14 +62,14 @@ public class MainActivity extends AppCompatActivity {
     private Handler toastHandler = new Handler(Looper.getMainLooper());
     private static final long TOAST_DEBOUNCE_TIME = 2000; // Toast防抖冷却时间（毫秒）
 
-    // ==== 新增：音乐与动画字段 ====
+    // ==== 音乐与动画字段 ====
     private ImageView ivRecord;
     private MediaPlayer bgMusic;
     private ObjectAnimator recordAnimator;
     private boolean isRecordPlaying = false;
     // =============================
 
-    // ========== 最小修改新增：暂停界面核心变量 ==========
+    // ========== 暂停界面核心变量 ==========
     private View pauseView; // 暂停界面View
     private Button btnMenu; // 菜单/暂停按钮
     private boolean isGamePaused = false; // 标记游戏是否暂停
@@ -165,6 +165,7 @@ public class MainActivity extends AppCompatActivity {
         Button btnNew = pauseView.findViewById(R.id.btn_new);
         Button btnResume = pauseView.findViewById(R.id.btn_resume);
         Button btnHelp = pauseView.findViewById(R.id.btn_help);
+        Button btnHistory = pauseView.findViewById(R.id.btn_history);
         Button btnExit = pauseView.findViewById(R.id.btn_exit);
 
         //新游戏
@@ -220,6 +221,8 @@ public class MainActivity extends AppCompatActivity {
             }
             // 恢复操作
             enableGameOperations();
+            //清空输入框
+            clear();
             //刷新牌面
             refreshCards();
 
@@ -260,9 +263,15 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
+        btnHistory.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, HistoryActivity.class);
+            startActivity(intent);
+        });
+
         // 退出游戏
         btnExit.setOnClickListener(v -> finish());
     }
+    // ==========================================================
 
     // ========== 禁用游戏操作（暂停时） ==========
     private void disableGameOperations() {
@@ -338,6 +347,7 @@ public class MainActivity extends AppCompatActivity {
         Button btnTips = findViewById(R.id.btn_Tips);
         btnTips.setOnClickListener(v -> {
             Tips();
+
         });
 
         //获取符号按钮并设置点击事件（点击符号按钮后重置扑克牌状态）
@@ -501,6 +511,11 @@ public class MainActivity extends AppCompatActivity {
     private void refreshCards() {
         Random random = new Random();
         enableOP();//启用所有符号
+        findViewById(R.id.btn_clear).setAlpha(1.0f); // 透明
+        findViewById(R.id.btn_clear).setClickable(true); // 可点击
+        findViewById(R.id.btn_Tips).setAlpha(1.0f); // 透明
+        findViewById(R.id.btn_Tips).setClickable(true); // 可点击
+
         isTips=false;
 
         // 先一次性生成四张牌，直到能组成24点（带安全上限避免死循环）
@@ -567,6 +582,21 @@ public class MainActivity extends AppCompatActivity {
     private void Tips() {
         isTips=true;
         etExpression.setText(result);
+
+        // ========== 新增：插入提示记录到数据库 ==========
+        // 1. 拼接当前牌面为"3 4 5 6"格式
+        StringBuilder cardsStr = new StringBuilder();
+        for (int i = 0; i < cardValues.length; i++) {
+            cardsStr.append(cardValues[i]);
+            if (i != cardValues.length - 1) {
+                cardsStr.append(" ");
+            }
+        }
+        // 2. 插入数据库（牌面 + 答案公式）
+        DBHelper dbHelper = new DBHelper(this);
+        dbHelper.insertTipRecord(cardsStr.toString(), result);
+        // ==============================================
+
         // 禁用所有扑克牌
         for(int i=0;i<4;i++)
         {
@@ -575,6 +605,10 @@ public class MainActivity extends AppCompatActivity {
         //禁用所有符号
         disableOP();
         lastClickedIsCard = false;   // 重置点击状态
+        findViewById(R.id.btn_clear).setAlpha(0.5f); // 半透明
+        findViewById(R.id.btn_clear).setClickable(false); // 不可点击
+        findViewById(R.id.btn_Tips).setAlpha(0.5f); // 半透明
+        findViewById(R.id.btn_Tips).setClickable(false); // 不可点击
     }
 
 

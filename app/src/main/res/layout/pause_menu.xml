@@ -7,7 +7,7 @@
     <!-- 中间菜单背景 -->
     <LinearLayout
         android:layout_width="318dp"
-        android:layout_height="299dp"
+        android:layout_height="350dp"
         android:layout_gravity="center"
         android:background="@drawable/menu_bg"
         android:gravity="center"
@@ -60,6 +60,17 @@
                 android:background="@drawable/btn_tips_selector"
                 android:stateListAnimator="@animator/button_press_anim"
                 android:text="帮助"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/btn_history"
+                android:layout_width="128dp"
+                android:layout_height="38dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/btn_refresh_selector"
+                android:stateListAnimator="@animator/button_press_anim"
+                android:text="不会的题"
                 android:textColor="#FFFFFF"
                 android:textSize="18sp" />
 

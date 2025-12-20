@@ -56,15 +56,13 @@ public class Time_model extends AppCompatActivity {
     private int score = 0;
     private TextView tvScore;
 
-    // ====================== 新增：倒计时相关变量 ======================
+    // ====================== 倒计时相关变量 ======================
     private TextView tvCountdown; // 倒计时文本控件
     private CountDownTimer countDownTimer; // 倒计时器
     private long remainingTime = 500 * 1000; // 剩余时间（初始500s，单位：毫秒）
     private static long TOTAL_TIME = 500 * 1000; // 初始总时长
     private static final long INTERVAL = 1000; // 倒计时间隔（1秒）
     private boolean isCountdownFinished = false; // 标记倒计时是否结束
-    // =================================================================
-
 
 
     // Toast防抖
@@ -73,7 +71,7 @@ public class Time_model extends AppCompatActivity {
     private Handler toastHandler = new Handler(Looper.getMainLooper());
     private static final long TOAST_DEBOUNCE_TIME = 2000; // Toast防抖冷却时间（毫秒）
 
-    // ==== 新增：音乐与动画字段 ====
+    // ==== 音乐与动画字段 ====
     private ImageView ivRecord;
     private MediaPlayer bgMusic;
     private ObjectAnimator recordAnimator;
@@ -91,7 +89,7 @@ public class Time_model extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
 
-        // ===== 新增：接收自定义时间 =====
+        // =====接收自定义时间 =====
         long customTimeSeconds = getIntent().getLongExtra("CUSTOM_TIME_SECONDS", 500);
         TOTAL_TIME = customTimeSeconds * 1000; // 转换为毫秒
         remainingTime = TOTAL_TIME; // 初始化剩余时间为自定义时间
@@ -184,6 +182,7 @@ public class Time_model extends AppCompatActivity {
         Button btnNew = pauseView.findViewById(R.id.btn_new);
         Button btnResume = pauseView.findViewById(R.id.btn_resume);
         Button btnHelp = pauseView.findViewById(R.id.btn_help);
+        Button btnHistory = pauseView.findViewById(R.id.btn_history);
         Button btnExit = pauseView.findViewById(R.id.btn_exit);
 
         //新游戏
@@ -246,6 +245,8 @@ public class Time_model extends AppCompatActivity {
             }
             // 恢复操作
             enableGameOperations();
+            //清空输入框
+            clear();
             //刷新牌面
             refreshCards();
 
@@ -284,6 +285,11 @@ public class Time_model extends AppCompatActivity {
             findViewById(R.id.btn_Refresh).setClickable(true);
             findViewById(R.id.btn_Menu).setClickable(true);
 
+        });
+
+        btnHistory.setOnClickListener(v -> {
+            Intent intent = new Intent(Time_model.this, HistoryActivity.class);
+            startActivity(intent);
         });
 
         // 退出游戏
@@ -330,9 +336,8 @@ public class Time_model extends AppCompatActivity {
     private void findViews() {
         etExpression = findViewById(R.id.et_expression);
         tvScore = findViewById(R.id.tv_score);
-        // ====================== 新增：绑定倒计时文本控件 ======================
+        // ====================== 绑定倒计时文本控件 ======================
         tvCountdown = findViewById(R.id.tv_countdown);
-        // =================================================================
         //绑定菜单按钮
         btnMenu = findViewById(R.id.btn_Menu);
         // 获取四个扑克牌ImageView
@@ -342,8 +347,6 @@ public class Time_model extends AppCompatActivity {
         final ImageView card4 = findViewById(R.id.card4);
         // 初始化数组
         cardViews = new ImageView[]{card1, card2, card3, card4};
-
-        // （注意：iv_record 不在此处绑定也可以，setupRecordPlayer() 中会绑定）
     }
 
     private void setupJexlEngine() {
@@ -373,7 +376,6 @@ public class Time_model extends AppCompatActivity {
         Button btnTips = findViewById(R.id.btn_Tips);
         btnTips.setOnClickListener(v -> {
             Tips();
-
             // ====================== 新增：点击提示暂停倒计时 ======================
             if (countDownTimer != null) {
                 countDownTimer.cancel(); // 暂停倒计时
@@ -608,6 +610,11 @@ public class Time_model extends AppCompatActivity {
     private void refreshCards() {
         Random random = new Random();
         enableOP();//启用所有符号
+        findViewById(R.id.btn_clear).setAlpha(1.0f); // 透明
+        findViewById(R.id.btn_clear).setClickable(true); // 可点击
+        findViewById(R.id.btn_Tips).setAlpha(1.0f); // 透明
+        findViewById(R.id.btn_Tips).setClickable(true); // 可点击
+
         isTips=false;
 
         // 先一次性生成四张牌，直到能组成24点（带安全上限避免死循环）
@@ -674,6 +681,21 @@ public class Time_model extends AppCompatActivity {
     private void Tips() {
         isTips=true;
         etExpression.setText(result);
+
+        // ========== 新增：插入提示记录到数据库 ==========
+        // 1. 拼接当前牌面为"3 4 5 6"格式
+        StringBuilder cardsStr = new StringBuilder();
+        for (int i = 0; i < cardValues.length; i++) {
+            cardsStr.append(cardValues[i]);
+            if (i != cardValues.length - 1) {
+                cardsStr.append(" ");
+            }
+        }
+        // 2. 插入数据库（牌面 + 答案公式）
+        DBHelper dbHelper = new DBHelper(this);
+        dbHelper.insertTipRecord(cardsStr.toString(), result);
+        // ==============================================
+
         // 禁用所有扑克牌
         for(int i=0;i<4;i++)
         {
@@ -682,6 +704,10 @@ public class Time_model extends AppCompatActivity {
         //禁用所有符号
         disableOP();
         lastClickedIsCard = false;   // 重置点击状态
+        findViewById(R.id.btn_clear).setAlpha(0.5f); // 半透明
+        findViewById(R.id.btn_clear).setClickable(false); // 不可点击
+        findViewById(R.id.btn_Tips).setAlpha(0.5f); // 半透明
+        findViewById(R.id.btn_Tips).setClickable(false); // 不可点击
     }
 
 

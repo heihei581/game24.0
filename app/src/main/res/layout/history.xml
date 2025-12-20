@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/history"
+    android:fitsSystemWindows="true">
+
+    <!-- 完全保留你设定的图片尺寸、位置、偏移量 -->
+    <ImageView
+        android:id="@+id/imageView9"
+        android:layout_width="475dp"
+        android:layout_height="268dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.06"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.76"
+        app:srcCompat="@drawable/txt" />
+
+    <!-- 滚动容器：精准覆盖图片，无默认内容 -->
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="15dp"
+        android:background="@android:color/transparent"
+        android:fadeScrollbars="false"
+        app:layout_constraintBottom_toBottomOf="@id/imageView9"
+        app:layout_constraintEnd_toEndOf="@id/imageView9"
+        app:layout_constraintStart_toStartOf="@id/imageView9"
+        app:layout_constraintTop_toTopOf="@id/imageView9">
+
+        <!-- 记录文本：
+             1. 运行时初始为空（无默认文字）
+             2. 仅用户点击提示后，从数据库读取数据才显示内容
+             3. ID与HistoryActivity中绑定的tv_24point_records完全一致 -->
+        <TextView
+            android:id="@+id/tv_24point_records"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="8dp"
+            android:padding="10dp"
+            android:textColor="#333333"
+            android:textSize="20sp" />
+    </ScrollView>
+
+    <ImageView
+        android:id="@+id/fanhui"
+        android:layout_width="73dp"
+        android:layout_height="61dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/fanhui" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
