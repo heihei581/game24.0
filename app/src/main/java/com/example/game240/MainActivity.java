@@ -583,7 +583,7 @@ public class MainActivity extends AppCompatActivity {
         isTips=true;
         etExpression.setText(result);
 
-        // ========== 新增：插入提示记录到数据库 ==========
+        // ========== 插入提示记录到数据库 ==========
         // 1. 拼接当前牌面为"3 4 5 6"格式
         StringBuilder cardsStr = new StringBuilder();
         for (int i = 0; i < cardValues.length; i++) {

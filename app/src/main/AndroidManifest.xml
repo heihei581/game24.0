@@ -12,37 +12,43 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Game240">
 
-        <!-- 1. 新增启动页 StartActivity 配置（核心：加 intent-filter 作为启动入口） -->
-        <!--  设置横屏竖屏      -->
+        <!-- 1. 加载页（SplashActivity）：设为启动页，竖屏 -->
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 2. 你的目标页（StartActivity）：移除启动入口，保留竖屏、exported=true（SplashActivity要跳转它） -->
         <activity
             android:name=".StartActivity"
             android:exported="true"
             android:screenOrientation="portrait">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-    </activity>
+        </activity>
 
-    <!-- 2. 修改原 MainActivity 配置（移除 intent-filter，exported 改为 false） -->
-    <activity
-        android:name=".MainActivity"
-        android:exported="false"
-        android:screenOrientation="landscape">
-    </activity>
+        <!-- 3. 原有Activity：配置完全不变 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:screenOrientation="landscape">
+        </activity>
 
-    <activity
-        android:name=".Time_model"
-        android:exported="false"
-        android:screenOrientation="landscape">
-    </activity>
+        <activity
+            android:name=".Time_model"
+            android:exported="false"
+            android:screenOrientation="landscape">
+        </activity>
 
-    <activity
-        android:name=".HistoryActivity"
-        android:exported="false"
-        android:screenOrientation="landscape">
-    </activity>
+        <activity
+            android:name=".HistoryActivity"
+            android:exported="false"
+            android:screenOrientation="landscape">
+        </activity>
 
-</application>
+    </application>
 
-    </manifest>
+</manifest>
