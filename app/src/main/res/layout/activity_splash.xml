@@ -4,19 +4,39 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/background"
-    android:gravity="center"
+    android:gravity="center_horizontal"
     android:orientation="vertical"
     android:padding="20dp">
 
+    <!-- 游戏标题：位置下调，居中偏上 -->
+    <TextView
+        android:id="@+id/tv_game_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="24点小游戏"
+        android:textSize="40sp"
+        android:textColor="#000000"
+        android:fontFamily="@font/my_custom_font"
+        android:layout_marginTop="120dp"/>
+
+    <!-- 弹性空白：让整体布局居中 -->
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+    <!-- 加载提示文字 -->
     <TextView
         android:id="@+id/tv_loading"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="加载中... 0%"
         android:textSize="20sp"
-        android:textColor="#FFFFFF"
+        android:textColor="#000000"
+        android:fontFamily="@font/my_custom_font"
         android:layout_marginBottom="20dp"/>
 
+    <!-- 进度条 -->
     <ProgressBar
         android:id="@+id/progress_bar"
         style="?android:attr/progressBarStyleHorizontal"
@@ -26,5 +46,64 @@
         android:max="100"
         android:progressTint="#4CAF50"
         android:backgroundTint="#EEEEEE"/>
+
+    <!-- 健康游戏忠告：直接放在进度条下方，每句话独立文本框，全部居中 -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_marginTop="30dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="健康游戏忠告"
+            android:textSize="15sp"
+            android:textColor="#000000"
+            android:fontFamily="@font/my_custom_font"
+            android:layout_marginBottom="5dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="抵制不良游戏，拒绝盗版游戏。"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:fontFamily="@font/my_custom_font"
+            android:layout_marginBottom="5dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="注意自我保护，谨防受骗上当。"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:fontFamily="@font/my_custom_font"
+            android:layout_marginBottom="5dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="适度游戏益脑，沉迷游戏伤身。"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:fontFamily="@font/my_custom_font"
+            android:layout_marginBottom="5dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="合理安排时间，享受健康生活。"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:fontFamily="@font/my_custom_font"/>
+    </LinearLayout>
+
+    <!-- 底部弹性空白 -->
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
 
 </LinearLayout>
